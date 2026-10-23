@@ -1,0 +1,1 @@
+ii php8.2-cli 8.2.35-1+deb.sury.org amd64 PHP

@@ -1,0 +1,5 @@
+php74-php-cli-7.4.33-32.el7.x86_64
+php80-php-fpm-8.0.30-23.el7.x86_64
+ii php8.3-cli 8.3.6-0ubuntu0.24.04.13 amd64 PHP
+php83-fpm-8.3.35-r0
+PHP 7.4.33 (cli)

@@ -1,0 +1,236 @@
+{
+  "updated": "2026-10-24",
+  "cves": [
+    "CVE-2026-109618",
+    "CVE-2026-109619"
+  ],
+  "min_affected": "5.4.0",
+  "fixed_upstream": {
+    "8.2": "8.2.35",
+    "8.3": "8.3.36",
+    "8.4": "8.4.27",
+    "8.5": "8.5.12"
+  },
+  "rules": [
+    {
+      "id": "gps-el7-scl",
+      "vendor": "GetPageSpeed (CentOS 7, software collection)",
+      "type": "rpm",
+      "name": "^php(56|70|71|72|73|74|80|81|82|83|84)-php(-[a-z0-9_-]+)?$",
+      "release": "^\\d+\\.el7$",
+      "fixed": {
+        "5.6.40": "5.6.40-43.el7",
+        "7.0.33": "7.0.33-45.el7",
+        "7.1.33": "7.1.33-35.el7",
+        "7.2.34": "7.2.34-30.el7",
+        "7.3.33": "7.3.33-23.el7",
+        "7.4.33": "7.4.33-32.el7",
+        "8.0.30": "8.0.30-24.el7",
+        "8.1": "8.1.34-7.el7",
+        "8.2": "8.2.35-2.el7",
+        "8.3": "8.3.36-2.el7",
+        "8.4": "8.4.27-3.el7"
+      },
+      "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum upgrade '{scl}-php*'\nsystemctl restart {scl}-php-fpm"
+    },
+    {
+      "id": "gps-el7-base",
+      "vendor": "GetPageSpeed (CentOS 7)",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "^\\d+\\.el7$",
+      "fixed": {
+        "5.6.40": "5.6.40-42.el7",
+        "7.0.33": "7.0.33-43.el7",
+        "7.1.33": "7.1.33-35.el7",
+        "7.2.34": "7.2.34-30.el7",
+        "7.3.33": "7.3.33-25.el7",
+        "7.4.33": "7.4.33-33.el7",
+        "8.0.30": "8.0.30-22.el7",
+        "8.1": "8.1.34-7.el7",
+        "8.2": "8.2.35-2.el7",
+        "8.3": "8.3.36-2.el7"
+      },
+      "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum --enablerepo=getpagespeed-extras-php{nodot} upgrade 'php-*'\nsystemctl restart php-fpm"
+    },
+    {
+      "id": "remi-el7",
+      "vendor": "Remi (CentOS 7)",
+      "type": "rpm",
+      "name": "^(php(56|70|71|72|73|74|80|81|82|83)-)?php(-[a-z0-9_-]+)?$",
+      "release": "\\.el7\\.remi$",
+      "verdict": "vulnerable",
+      "note": "Remi stopped building for CentOS 7 in June 2024, so every Remi EL7 build predates the fix.",
+      "fix_by_branch": {
+        "5.6": "gps-el7",
+        "7.0": "gps-el7",
+        "7.1": "gps-el7",
+        "7.2": "gps-el7",
+        "7.3": "gps-el7",
+        "7.4": "gps-el7",
+        "8.0": "gps-el7",
+        "8.1": "gps-el7",
+        "8.2": "gps-el7",
+        "8.3": "gps-el7"
+      },
+      "fix": "# No patched Remi build exists for CentOS 7. Move to the GetPageSpeed PHP 8.4 stack:\nyum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum-config-manager --enable getpagespeed-extras-php84\nyum install php84-getpagespeed-stack"
+    },
+    {
+      "id": "centos7-base",
+      "vendor": "CentOS 7 base",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "^\\d+\\.el7(_\\d+)?(\\.centos)?$",
+      "upstream": "^5\\.4\\.",
+      "verdict": "vulnerable",
+      "note": "CentOS 7 is end-of-life and its PHP 5.4 package will never get this fix.",
+      "fix": "# CentOS 7 PHP 5.4 will never be fixed. Move to the GetPageSpeed PHP 8.4 stack:\nyum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum-config-manager --enable getpagespeed-extras-php84\nyum install php84-getpagespeed-stack"
+    },
+    {
+      "id": "remi-el8plus-eol",
+      "vendor": "Remi (EL8 and newer)",
+      "type": "rpm",
+      "name": "^(php\\d\\d-)?php(-[a-z0-9_-]+)?$",
+      "release": "\\.el(8|9|10)(_\\d+)?\\.remi$|module_php\\.[\\d.]+\\.el\\d+\\.remi$",
+      "fixed": {
+        "7.4.33": "7.4.33-31",
+        "8.0.30": "8.0.30-21"
+      },
+      "fix": "sudo dnf upgrade 'php*'\nsudo systemctl restart php-fpm httpd"
+    },
+    {
+      "id": "remi-el8plus",
+      "vendor": "Remi (EL8 and newer)",
+      "type": "rpm",
+      "name": "^(php\\d\\d-)?php(-[a-z0-9_-]+)?$",
+      "release": "\\.el(8|9|10)(_\\d+)?\\.remi$|module_php\\.[\\d.]+\\.el\\d+\\.remi$",
+      "mode": "upstream",
+      "eol_note": "Remi has not published a PHP2Shell backport for this branch. Check rpm -q --changelog for CVE-2026-109618, or move to PHP 8.2 or newer.",
+      "fix": "sudo dnf upgrade 'php*'\nsudo systemctl restart php-fpm httpd"
+    },
+    {
+      "id": "rhel8-php74",
+      "vendor": "RHEL 8, AlmaLinux 8, Rocky 8 (php:7.4)",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "module[+_]el8\\.10",
+      "fixed": {
+        "7.4.33": "7.4.33-8"
+      },
+      "fix": "sudo dnf upgrade 'php*'\nsudo systemctl restart php-fpm httpd"
+    },
+    {
+      "id": "rhel88-e4s-php74",
+      "vendor": "RHEL 8.8 E4S/TUS (php:7.4)",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "module\\+el8\\.8\\.0",
+      "fixed": {
+        "7.4.33": "7.4.33-1.module+el8.8.0+25148+55cf9df9.2"
+      },
+      "fix": "sudo dnf upgrade 'php*'\nsudo systemctl restart php-fpm httpd"
+    },
+    {
+      "id": "rhel86-aus-php74",
+      "vendor": "RHEL 8.6 AUS (php:7.4)",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "module\\+el8\\.6\\.0",
+      "fixed": {
+        "7.4.19": "7.4.19-4.module+el8.6.0+25157+c2ff122e.3"
+      },
+      "fix": "sudo dnf upgrade 'php*'\nsudo systemctl restart php-fpm httpd"
+    },
+    {
+      "id": "rhel9-php80",
+      "vendor": "RHEL 9, AlmaLinux 9, Rocky 9 (base php 8.0)",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "^\\d+\\.el9(_\\d+)?(\\.\\d+)?$",
+      "fixed": {
+        "8.0.30": "8.0.30-8.el9_8.1"
+      },
+      "fix": "sudo dnf upgrade 'php*'\nsudo systemctl restart php-fpm httpd"
+    },
+    {
+      "id": "rhel9-php84-module",
+      "vendor": "RHEL 9 (php:8.4 module)",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "module[+_]el9",
+      "upstream": "^8\\.4\\.([0-9]|1[0-9]|2[0-6])$",
+      "verdict": "vulnerable",
+      "note": "On October 23, 2026 Red Hat still listed the php:8.4 stream on RHEL 9 as affected with no fix available. Switch to the fixed php:8.3 stream or watch dnf updateinfo list --cve CVE-2026-109618.",
+      "fix": "sudo dnf module switch-to php:8.3\nsudo systemctl restart php-fpm httpd"
+    },
+    {
+      "id": "rhel-family",
+      "vendor": "RHEL, AlmaLinux, Rocky, Oracle Linux",
+      "type": "rpm",
+      "name": "^php(8\\.\\d)?(-[a-z0-9_-]+)?$",
+      "release": "\\.(module[+_])?el(8|9|10)",
+      "mode": "upstream",
+      "eol_note": "Red Hat's advisories cover only some streams of this branch. Ask dnf directly: dnf updateinfo list --cve CVE-2026-109618",
+      "fix": "sudo dnf upgrade 'php*'\nsudo systemctl restart php-fpm httpd"
+    },
+    {
+      "id": "amazon-2023",
+      "vendor": "Amazon Linux 2023",
+      "type": "rpm",
+      "name": "^php8\\.\\d(-[a-z0-9_-]+)?$",
+      "release": "amzn2023",
+      "mode": "upstream",
+      "eol_note": "Amazon Linux 2023 fixed php8.2 to php8.5 only.",
+      "fix": "sudo dnf upgrade --releasever=latest 'php*'\nsudo systemctl restart php-fpm httpd"
+    },
+    {
+      "id": "ubuntu",
+      "vendor": "Ubuntu",
+      "type": "deb",
+      "name": "^(php\\d(\\.\\d)?|libapache2-mod-php\\d(\\.\\d)?)(-[a-z0-9_-]+)?$",
+      "release": "ubuntu",
+      "fixed": {
+        "8.5.9": "8.5.9-0ubuntu2.1",
+        "8.5.4": "8.5.4-0ubuntu1.5",
+        "8.3.6": "8.3.6-0ubuntu0.24.04.13",
+        "8.1.2": "8.1.2-1ubuntu2.28",
+        "7.4.3": "7.4.3-4ubuntu2.29+esm5",
+        "7.2.24": "7.2.24-0ubuntu0.18.04.17+esm14",
+        "7.0.33": "7.0.33-0ubuntu0.16.04.16+esm22",
+        "5.5.9": "5.5.9+dfsg-1ubuntu4.29+esm18"
+      },
+      "note": "Ubuntu backports the fix and keeps the original PHP version number.",
+      "fix": "sudo apt update\nsudo apt install --only-upgrade $(dpkg -l 'php*' | awk '/^ii/{print $2}')\nsudo systemctl restart 'php*-fpm.service' apache2"
+    },
+    {
+      "id": "sury",
+      "vendor": "Ondřej Surý packages",
+      "type": "deb",
+      "name": "^(php\\d\\.\\d|libapache2-mod-php\\d\\.\\d)(-[a-z0-9_-]+)?$",
+      "release": "deb\\.sury\\.org|\\+0~20\\d{6}",
+      "mode": "upstream",
+      "eol_note": "As of October 22, 2026 the Surý packages for this branch had no PHP2Shell entry in their changelog. Check apt changelog for CVE-2026-109618, or move to PHP 8.2 or newer.",
+      "fix": "sudo apt update\nsudo apt install --only-upgrade $(dpkg -l 'php*' | awk '/^ii/{print $2}')\nsudo systemctl restart 'php*-fpm.service' apache2"
+    },
+    {
+      "id": "debian",
+      "vendor": "Debian",
+      "type": "deb",
+      "name": "^(php\\d(\\.\\d)?|libapache2-mod-php\\d(\\.\\d)?)(-[a-z0-9_-]+)?$",
+      "release": "~deb\\d+u\\d+|^\\d[\\d.]*-\\d+$",
+      "mode": "upstream",
+      "eol_note": "Debian has published no PHP2Shell fix for this release yet. Check apt changelog for CVE-2026-109618, or move to PHP 8.2 or newer.",
+      "fix": "sudo apt update\nsudo apt install --only-upgrade $(dpkg -l 'php*' | awk '/^ii/{print $2}')\nsudo systemctl restart 'php*-fpm.service' apache2"
+    },
+    {
+      "id": "alpine",
+      "vendor": "Alpine Linux",
+      "type": "apk",
+      "name": "^php\\d\\d(-[a-z0-9_]+)*$",
+      "release": "^r\\d+$",
+      "mode": "upstream",
+      "eol_note": "Alpine fixed only php82 to php85, and only on supported branches.",
+      "fix": "apk update && apk upgrade\nrc-service php-fpm83 restart   # adjust to your version"
+    }
+  ]
+}
