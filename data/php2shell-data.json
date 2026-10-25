@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-24",
+  "updated": "2026-10-25",
   "cves": [
     "CVE-2026-109618",
     "CVE-2026-109619"
@@ -184,6 +184,22 @@
       "fix": "sudo dnf upgrade --releasever=latest 'php*'\nsudo systemctl restart php-fpm httpd"
     },
     {
+      "id": "gps-deb",
+      "vendor": "GetPageSpeed (Ubuntu 20.04/18.04, Debian 10)",
+      "type": "deb",
+      "name": "^(php\\d\\.\\d|libapache2-mod-php\\d\\.\\d)(-[a-z0-9_-]+)?$",
+      "release": "\\+gps\\d+\\+",
+      "fixed": {
+        "7.2.34": "7.2.34-66+gps1",
+        "7.3.33": "7.3.33-35+gps1",
+        "7.4.33": "7.4.33-31+gps1",
+        "8.0.30": "8.0.30-25+gps1",
+        "8.1.34": "8.1.34-9+gps1"
+      },
+      "note": "Free to install; commercial production use requires GetPageSpeed Ultra.",
+      "fix": "wget https://extras.getpagespeed.com/release-latest.deb\nsudo apt install ./release-latest.deb\nsudo apt update && sudo apt upgrade 'php{branch}-*'\nsudo systemctl restart php{branch}-fpm"
+    },
+    {
       "id": "ubuntu",
       "vendor": "Ubuntu",
       "type": "deb",
@@ -209,8 +225,16 @@
       "name": "^(php\\d\\.\\d|libapache2-mod-php\\d\\.\\d)(-[a-z0-9_-]+)?$",
       "release": "deb\\.sury\\.org|\\+0~20\\d{6}",
       "mode": "upstream",
-      "eol_note": "As of October 22, 2026 the Surý packages for this branch had no PHP2Shell entry in their changelog. Check apt changelog for CVE-2026-109618, or move to PHP 8.2 or newer.",
-      "fix": "sudo apt update\nsudo apt install --only-upgrade $(dpkg -l 'php*' | awk '/^ii/{print $2}')\nsudo systemctl restart 'php*-fpm.service' apache2"
+      "fixed": {
+        "5.6.40": "5.6.40-104",
+        "7.2.34": "7.2.34-66",
+        "7.3.33": "7.3.33-35",
+        "7.4.33": "7.4.33-31",
+        "8.0.30": "8.0.30-25",
+        "8.1.34": "8.1.34-9"
+      },
+      "eol_note": "As of October 25, 2026 the Surý packages for this branch had no confirmed PHP2Shell entry in their changelog. Check apt changelog for CVE-2026-109618, or move to PHP 8.2 or newer.",
+      "fix": "sudo apt update\nsudo apt install --only-upgrade $(dpkg -l 'php*' | awk '/^ii/{print $2}')\nsudo systemctl restart 'php*-fpm.service' apache2\n# Ubuntu 20.04/18.04 and Debian 10 are no longer built by the PPA. Use the GetPageSpeed build instead:\n# wget https://extras.getpagespeed.com/release-latest.deb && sudo apt install ./release-latest.deb && sudo apt update && sudo apt upgrade 'php*'"
     },
     {
       "id": "debian",

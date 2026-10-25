@@ -20,6 +20,11 @@
   var FIXED = DATA.fixed_upstream || {};
   var RULES = DATA.rules || [];
 
+  function gpsTrack(evt, params) {
+    if (!window.gtag) { return; }
+    try { gtag('event', evt, Object.assign({ tool: 'php2shell' }, params || {})); } catch (e) {}
+  }
+
   // ---------- version comparison (rpmvercmp/dpkg hybrid, "~" sorts first) ----------
   function splitSegments(s) {
     var out = [];
@@ -163,6 +168,19 @@
     if (rule.verdict === 'patched') {
       return { verdict: 'patched', vendor: rule.vendor, note: rule.note || '' };
     }
+    // A vendor's explicit backport entry for this branch beats the generic
+    // upstream mode: Surý, for example, rebases 8.2+ (upstream version is
+    // authoritative) but backports the fix into EOL branches it still builds.
+    var fixedMap = rule.fixed || {};
+    var target = u ? (fixedMap[u.full] || fixedMap[branch]) : null;
+    if (target) {
+      var installed = pkg.type === 'deb' ? pkg.full : pkg.version + '-' + pkg.release;
+      if (vercmp(installed, target) >= 0) {
+        return { verdict: 'patched', vendor: rule.vendor, fixedIn: target, note: rule.note || '' };
+      }
+      return { verdict: 'vulnerable', vendor: rule.vendor, fixedIn: target, note: rule.note || '', fix: fillFix(rule.fix, pkg, branch) };
+    }
+
     if (rule.mode === 'upstream') {
       // This vendor rebases to the fixed upstream release, so the version number is authoritative.
       var st = upstreamStatus(pkg.version);
@@ -175,17 +193,9 @@
       return { verdict: 'unknown', vendor: rule.vendor, note: rule.eol_note || '', fix: fillFix(rule.fix, pkg, branch) };
     }
 
-    var fixedMap = rule.fixed || {};
-    var target = u ? (fixedMap[u.full] || fixedMap[branch]) : null;
-    if (!target) {
-      // Upstream branches 8.2+ carry the fix regardless of vendor once the version is high enough.
-      return null;
-    }
-    var installed = pkg.type === 'deb' ? pkg.full : pkg.version + '-' + pkg.release;
-    if (vercmp(installed, target) >= 0) {
-      return { verdict: 'patched', vendor: rule.vendor, fixedIn: target, note: rule.note || '' };
-    }
-    return { verdict: 'vulnerable', vendor: rule.vendor, fixedIn: target, note: rule.note || '', fix: fillFix(rule.fix, pkg, branch) };
+    // No entry for this branch: upstream 8.2+ carries the fix regardless of vendor
+    // once the version is high enough, so let later rules or the generic judge decide.
+    return null;
   }
 
   function genericFix(pkg) {
@@ -284,6 +294,8 @@
   var LABELS = { vulnerable: 'Vulnerable', unknown: 'Unconfirmed', patched: 'Patched' };
 
   function render(report, target) {
+    // Verdict class only: what the user pasted never leaves the browser.
+    gpsTrack('result_shown', { mode: 'packages', verdict: report.overall });
     target.innerHTML = '';
     var card = el('div', 'gps-p2s-verdict gps-p2s-verdict-' + report.overall);
     card.appendChild(el('p', 'gps-p2s-verdict-title', HEADLINES[report.overall]));
@@ -350,6 +362,7 @@
   };
 
   function renderUrl(r, target) {
+    gpsTrack('result_shown', { mode: 'url', verdict: r.verdict });
     target.innerHTML = '';
     var state = URL_STATE[r.verdict] || 'unknown';
     var card = el('div', 'gps-p2s-verdict gps-p2s-verdict-' + state);
@@ -371,6 +384,7 @@
     if (form && input && out) {
       form.addEventListener('submit', function (e) {
         e.preventDefault();
+        gpsTrack('tool_run', { mode: 'packages' });
         render(check(input.value), out);
         out.focus();
       });
@@ -397,12 +411,19 @@
       });
     });
 
+    Array.prototype.forEach.call(document.querySelectorAll('a[data-gps-cta]'), function (a) {
+      a.addEventListener('click', function () {
+        gpsTrack('cta_click', { cta_target: a.getAttribute('data-gps-cta') });
+      });
+    });
+
     var urlForm = document.getElementById('gps-p2s-url-form');
     var urlInput = document.getElementById('gps-p2s-url-input');
     var urlOut = document.getElementById('gps-p2s-url-result');
     if (urlForm && urlInput && urlOut) {
       urlForm.addEventListener('submit', function (e) {
         e.preventDefault();
+        gpsTrack('tool_run', { mode: 'url' });
         var btn = urlForm.querySelector('button[type="submit"]');
         btn.disabled = true;
         btn.textContent = 'Checking…';
