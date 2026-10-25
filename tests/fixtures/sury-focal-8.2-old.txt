@@ -1,0 +1,1 @@
+ii php8.2-fpm 8.2.28-1+ubuntu20.04.1+deb.sury.org+1 amd64 x

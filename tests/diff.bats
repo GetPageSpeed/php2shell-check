@@ -68,3 +68,23 @@ setup() {
     [ "$status" -eq 3 ]
     [[ "$output" == *'No PHP found.'* ]]
 }
+
+@test "published focal packages retain the provider and exact package floor" {
+    for pair in 8.2:8.2.35 8.3:8.3.36 8.4:8.4.27; do
+        branch=${pair%%:*}
+        version=${pair#*:}
+        run bash php2shell-check.sh --json --file "tests/fixtures/gps-focal-$branch-fixed.txt"
+        [ "$status" -eq 0 ]
+        node -e '
+          const assert = require("node:assert/strict");
+          const row = JSON.parse(process.argv[1]).results[0];
+          assert.match(row.vendor, /^GetPageSpeed/);
+          assert.equal(row.fixedIn, process.argv[2] + "-1+gps1");
+        ' "$output" "$version"
+    done
+}
+
+@test "checker page extraction accepts current WordPress markup" {
+    run python3 -m unittest discover -s tests -p test_sync_page.py -v
+    [ "$status" -eq 0 ]
+}

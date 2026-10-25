@@ -194,7 +194,10 @@
         "7.3.33": "7.3.33-35+gps1",
         "7.4.33": "7.4.33-31+gps1",
         "8.0.30": "8.0.30-25+gps1",
-        "8.1.34": "8.1.34-9+gps1"
+        "8.1.34": "8.1.34-9+gps1",
+        "8.2.35": "8.2.35-1+gps1",
+        "8.3.36": "8.3.36-1+gps1",
+        "8.4.27": "8.4.27-1+gps1"
       },
       "note": "Free to install; commercial production use requires GetPageSpeed Ultra.",
       "fix": "wget https://extras.getpagespeed.com/release-latest.deb\nsudo apt install ./release-latest.deb\nsudo apt update && sudo apt upgrade 'php{branch}-*'\nsudo systemctl restart php{branch}-fpm"
