@@ -1,0 +1,2 @@
+php-cli-7.2.34-33.amzn2.x86_64
+php72-php-fpm-7.2.34-33.amzn2.aarch64

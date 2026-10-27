@@ -1,0 +1,4 @@
+ea-php74-php-cli-7.4.33-18.el8.cloudlinux.13.x86_64
+ea-php83-php-cli-8.3.35-2.el9.cloudlinux.2.x86_64
+ea-php56-php-cli-5.6.40-25.el7.cloudlinux.18.x86_64
+ea-php85-php-cli-8.5.11-2.el10.cloudlinux.1.x86_64

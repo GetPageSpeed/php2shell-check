@@ -1,0 +1,3 @@
+alt-php74-cli-7.4.33-81.el8.x86_64
+alt-php82-common-8.2.35-1.el9.x86_64
+alt-php52-cli-5.2.17-242.el7.x86_64

@@ -67,7 +67,7 @@ bash php2shell-check.sh --version
 
 ## Supported vendors
 
-Rules cover GetPageSpeed CentOS 7 base and software collections, Remi EL7 and EL8+, CentOS 7 base, RHEL/AlmaLinux/Rocky/Oracle Linux, Amazon Linux 2023, Ubuntu, Debian, Ondřej Surý packages, and Alpine Linux. Coverage depends on the branch and package release; unknown builds are reported as unknown.
+Rules cover GetPageSpeed CentOS 7 base and software collections, Remi EL7 and EL8+, CentOS 7 base, RHEL/AlmaLinux/Rocky/Oracle Linux, cPanel EasyApache 4 ea-php, CloudLinux ea-php and alt-php, Amazon Linux 2 (including the GetPageSpeed PHP 7.2 build), Amazon Linux 2023, Ubuntu, Debian, Ondřej Surý packages, and Alpine Linux. Coverage depends on the branch and package release; unknown builds are reported as unknown.
 
 Use the [web checker](https://www.getpagespeed.com/php2shell) for fix instructions and mitigation.
 

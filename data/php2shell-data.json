@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-25",
+  "updated": "2026-10-27",
   "cves": [
     "CVE-2026-109618",
     "CVE-2026-109619"
@@ -16,9 +16,10 @@
       "id": "gps-el7-scl",
       "vendor": "GetPageSpeed (CentOS 7, software collection)",
       "type": "rpm",
-      "name": "^php(56|70|71|72|73|74|80|81|82|83|84)-php(-[a-z0-9_-]+)?$",
+      "name": "^php(54|56|70|71|72|73|74|80|81|82|83|84)-php(-[a-z0-9_-]+)?$",
       "release": "^\\d+\\.el7$",
       "fixed": {
+        "5.4.45": "5.4.45-20.el7",
         "5.6.40": "5.6.40-43.el7",
         "7.0.33": "7.0.33-45.el7",
         "7.1.33": "7.1.33-35.el7",
@@ -40,6 +41,7 @@
       "name": "^php(-[a-z0-9_-]+)?$",
       "release": "^\\d+\\.el7$",
       "fixed": {
+        "5.4.45": "5.4.45-20.el7",
         "5.6.40": "5.6.40-42.el7",
         "7.0.33": "7.0.33-43.el7",
         "7.1.33": "7.1.33-35.el7",
@@ -57,11 +59,12 @@
       "id": "remi-el7",
       "vendor": "Remi (CentOS 7)",
       "type": "rpm",
-      "name": "^(php(56|70|71|72|73|74|80|81|82|83)-)?php(-[a-z0-9_-]+)?$",
+      "name": "^(php(54|56|70|71|72|73|74|80|81|82|83)-)?php(-[a-z0-9_-]+)?$",
       "release": "\\.el7\\.remi$",
       "verdict": "vulnerable",
       "note": "Remi stopped building for CentOS 7 in June 2024, so every Remi EL7 build predates the fix.",
       "fix_by_branch": {
+        "5.4": "gps-el7",
         "5.6": "gps-el7",
         "7.0": "gps-el7",
         "7.1": "gps-el7",
@@ -83,8 +86,8 @@
       "release": "^\\d+\\.el7(_\\d+)?(\\.centos)?$",
       "upstream": "^5\\.4\\.",
       "verdict": "vulnerable",
-      "note": "CentOS 7 is end-of-life and its PHP 5.4 package will never get this fix.",
-      "fix": "# CentOS 7 PHP 5.4 will never be fixed. Move to the GetPageSpeed PHP 8.4 stack:\nyum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum-config-manager --enable getpagespeed-extras-php84\nyum install php84-getpagespeed-stack"
+      "note": "CentOS 7 is end-of-life and its stock PHP 5.4.16 will never get this fix. The GetPageSpeed php54 channel replaces it in place with a patched 5.4.45 (same package names, extensions and ionCube keep working).",
+      "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum --enablerepo=getpagespeed-extras-php54 upgrade php 'php-*'\nsystemctl restart httpd php-fpm"
     },
     {
       "id": "remi-el8plus-eol",
@@ -172,6 +175,214 @@
       "mode": "upstream",
       "eol_note": "Red Hat's advisories cover only some streams of this branch. Ask dnf directly: dnf updateinfo list --cve CVE-2026-109618",
       "fix": "sudo dnf upgrade 'php*'\nsudo systemctl restart php-fpm httpd"
+    },
+    {
+      "id": "cloudlinux-ea-php-el7",
+      "vendor": "CloudLinux ea-php for cPanel (CloudLinux 7)",
+      "type": "rpm",
+      "name": "^ea-php\\d\\d-php(-[a-z0-9_-]+)?$",
+      "release": "\\.el7\\.cloudlinux",
+      "fixed": {
+        "5.2": "5.2.17-27.el7.cloudlinux.67",
+        "5.3": "5.3.29-29.el7.cloudlinux.69",
+        "5.4": "5.4.45-82.el7.cloudlinux.9",
+        "5.5": "5.5.38-64.el7.cloudlinux.10",
+        "5.6": "5.6.40-25.el7.cloudlinux.18",
+        "7.0": "7.0.33-29.el7.cloudlinux.17",
+        "7.1": "7.1.33-20.el7.cloudlinux.17",
+        "7.2": "7.2.34-12.el7.cloudlinux.18",
+        "7.3": "7.3.33-15.el7.cloudlinux.18",
+        "7.4": "7.4.33-18.el7.cloudlinux.13",
+        "8.0": "8.0.30-11.el7.cloudlinux.1",
+        "8.1": "8.1.34-4.el7.cloudlinux.1",
+        "8.2": "8.2.34-2.el7.cloudlinux.1",
+        "8.3": "8.3.35-2.el7.cloudlinux.2",
+        "8.4": "8.4.26-2.el7.cloudlinux.1",
+        "8.5": "8.5.11-2.el7.cloudlinux.1"
+      },
+      "note": "CloudLinux backports the fix and keeps a lower PHP version number than php.net. Its builds come from the cl-ea4 repository, which must be enabled next to the cPanel EA4 repository.",
+      "fix": "yum clean all && yum update 'ea-php*'\n/scripts/restartsrv_apache_php_fpm\n/scripts/restartsrv_httpd"
+    },
+    {
+      "id": "cloudlinux-ea-php-el8",
+      "vendor": "CloudLinux ea-php for cPanel (CloudLinux 8)",
+      "type": "rpm",
+      "name": "^ea-php\\d\\d-php(-[a-z0-9_-]+)?$",
+      "release": "\\.el8\\.cloudlinux",
+      "fixed": {
+        "5.2": "5.2.17-27.el8.cloudlinux.67",
+        "5.3": "5.3.29-29.el8.cloudlinux.69",
+        "5.4": "5.4.45-82.el8.cloudlinux.9",
+        "5.5": "5.5.38-64.el8.cloudlinux.10",
+        "5.6": "5.6.40-25.el8.cloudlinux.18",
+        "7.0": "7.0.33-29.el8.cloudlinux.17",
+        "7.1": "7.1.33-20.el8.cloudlinux.17",
+        "7.2": "7.2.34-12.el8.cloudlinux.18",
+        "7.3": "7.3.33-15.el8.cloudlinux.18",
+        "7.4": "7.4.33-18.el8.cloudlinux.13",
+        "8.0": "8.0.30-11.el8.cloudlinux.1",
+        "8.1": "8.1.34-4.el8.cloudlinux.1",
+        "8.2": "8.2.34-2.el8.cloudlinux.1",
+        "8.3": "8.3.35-2.el8.cloudlinux.2",
+        "8.4": "8.4.26-2.el8.cloudlinux.1",
+        "8.5": "8.5.11-2.el8.cloudlinux.1"
+      },
+      "note": "CloudLinux backports the fix and keeps a lower PHP version number than php.net. Its builds come from the cl-ea4 repository, which must be enabled next to the cPanel EA4 repository.",
+      "fix": "dnf clean all && dnf update 'ea-php*'\n/scripts/restartsrv_apache_php_fpm\n/scripts/restartsrv_httpd"
+    },
+    {
+      "id": "cloudlinux-ea-php-el9",
+      "vendor": "CloudLinux ea-php for cPanel (CloudLinux 9)",
+      "type": "rpm",
+      "name": "^ea-php\\d\\d-php(-[a-z0-9_-]+)?$",
+      "release": "\\.el9\\.cloudlinux",
+      "fixed": {
+        "5.2": "5.2.17-27.el9.cloudlinux.67",
+        "5.3": "5.3.29-29.el9.cloudlinux.69",
+        "5.4": "5.4.45-82.el9.cloudlinux.9",
+        "5.5": "5.5.38-64.el9.cloudlinux.10",
+        "5.6": "5.6.40-25.el9.cloudlinux.18",
+        "7.0": "7.0.33-29.el9.cloudlinux.17",
+        "7.1": "7.1.33-20.el9.cloudlinux.17",
+        "7.2": "7.2.34-12.el9.cloudlinux.18",
+        "7.3": "7.3.33-15.el9.cloudlinux.18",
+        "7.4": "7.4.33-18.el9.cloudlinux.13",
+        "8.0": "8.0.30-11.el9.cloudlinux.1",
+        "8.1": "8.1.34-4.el9.cloudlinux.1",
+        "8.2": "8.2.34-2.el9.cloudlinux.1",
+        "8.3": "8.3.35-2.el9.cloudlinux.2",
+        "8.4": "8.4.26-2.el9.cloudlinux.1",
+        "8.5": "8.5.11-2.el9.cloudlinux.1"
+      },
+      "note": "CloudLinux backports the fix and keeps a lower PHP version number than php.net. Its builds come from the cl-ea4 repository, which must be enabled next to the cPanel EA4 repository.",
+      "fix": "dnf clean all && dnf update 'ea-php*'\n/scripts/restartsrv_apache_php_fpm\n/scripts/restartsrv_httpd"
+    },
+    {
+      "id": "cloudlinux-ea-php-el10",
+      "vendor": "CloudLinux ea-php for cPanel (CloudLinux 10)",
+      "type": "rpm",
+      "name": "^ea-php\\d\\d-php(-[a-z0-9_-]+)?$",
+      "release": "\\.el10\\.cloudlinux",
+      "fixed": {
+        "5.2": "5.2.17-27.el10.cloudlinux.67",
+        "5.3": "5.3.29-29.el10.cloudlinux.69",
+        "5.4": "5.4.45-82.el10.cloudlinux.9",
+        "5.5": "5.5.38-64.el10.cloudlinux.10",
+        "5.6": "5.6.40-25.el10.cloudlinux.18",
+        "7.0": "7.0.33-29.el10.cloudlinux.17",
+        "7.1": "7.1.33-20.el10.cloudlinux.17",
+        "7.2": "7.2.34-12.el10.cloudlinux.18",
+        "7.3": "7.3.33-15.el10.cloudlinux.18",
+        "7.4": "7.4.33-18.el10.cloudlinux.13",
+        "8.0": "8.0.30-11.el10.cloudlinux.1",
+        "8.1": "8.1.34-4.el10.cloudlinux.1",
+        "8.2": "8.2.34-2.el10.cloudlinux.1",
+        "8.3": "8.3.35-2.el10.cloudlinux.2",
+        "8.4": "8.4.26-2.el10.cloudlinux.1",
+        "8.5": "8.5.11-2.el10.cloudlinux.1"
+      },
+      "note": "CloudLinux backports the fix and keeps a lower PHP version number than php.net. Its builds come from the cl-ea4 repository, which must be enabled next to the cPanel EA4 repository.",
+      "fix": "dnf clean all && dnf update 'ea-php*'\n/scripts/restartsrv_apache_php_fpm\n/scripts/restartsrv_httpd"
+    },
+    {
+      "id": "cpanel-ea-php",
+      "vendor": "cPanel EasyApache 4",
+      "type": "rpm",
+      "name": "^ea-php\\d\\d-php(-[a-z0-9_-]+)?$",
+      "release": "\\.cpanel$",
+      "fixed": {
+        "7.4": "7.4.33-19",
+        "8.0": "8.0.30-12",
+        "8.1": "8.1.34-5",
+        "8.2": "8.2.35",
+        "8.3": "8.3.36",
+        "8.4": "8.4.27",
+        "8.5": "8.5.12"
+      },
+      "note": "cPanel backported the fix to ea-php74, ea-php80 and ea-php81 in EasyApache 4 25.91 without changing the PHP version number. The cPanel and WHM version says nothing about ea-php: check the ea-php package itself.",
+      "fix": "yum update 'ea-php*'\n/scripts/restartsrv_apache_php_fpm\n/scripts/restartsrv_httpd"
+    },
+    {
+      "id": "cpanel-ea-php-eol",
+      "vendor": "cPanel EasyApache 4",
+      "type": "rpm",
+      "name": "^ea-php(5\\d|7[0-3])-php(-[a-z0-9_-]+)?$",
+      "release": "\\.cpanel$",
+      "verdict": "vulnerable",
+      "note": "cPanel patched only ea-php74 and newer. Its ea-php5x to ea-php73 builds will not get this fix.",
+      "fix": "# Move every site on this version to a patched one (ea-php82 or newer) in\n# WHM > MultiPHP Manager, then remove it:\nyum remove '{pkg}'"
+    },
+    {
+      "id": "cloudlinux-alt-php",
+      "vendor": "CloudLinux alt-php",
+      "type": "rpm",
+      "name": "^alt-php\\d\\d(-[a-z0-9_-]+)?$",
+      "release": "\\.el[789]",
+      "fixed": {
+        "5.2": "5.2.17-242",
+        "5.3": "5.3.29-220",
+        "5.4": "5.4.45-203",
+        "5.5": "5.5.38-183",
+        "5.6": "5.6.40-147",
+        "7.0": "7.0.33-148",
+        "7.1": "7.1.33-114",
+        "7.2": "7.2.34-97",
+        "7.3": "7.3.33-82",
+        "7.4": "7.4.33-81",
+        "8.0": "8.0.30-69",
+        "8.1": "8.1.34-39",
+        "8.2": "8.2.34-7",
+        "8.3": "8.3.35-6",
+        "8.4": "8.4.26-5",
+        "8.5": "8.5.11-5"
+      },
+      "note": "CloudLinux backports the fix into every alt-php branch, so the PHP version can stay below the php.net release.",
+      "fix": "yum clean all && yum update 'alt-php*'\n# then restart Apache, PHP-FPM or LiteSpeed (pkill lsphp)"
+    },
+    {
+      "id": "gps-amzn2-scl",
+      "vendor": "GetPageSpeed (Amazon Linux 2, software collection)",
+      "type": "rpm",
+      "name": "^php72-php(-[a-z0-9_-]+)?$",
+      "release": "^\\d+\\.amzn2$",
+      "fixed": {
+        "7.2": "7.2.34-33.amzn2"
+      },
+      "fix": "sudo yum -y install https://extras.getpagespeed.com/release-latest.rpm\nsudo yum -y update getpagespeed-extras-release\nsudo amazon-linux-extras install -y epel\nsudo yum upgrade 'php72-php*'\nsudo systemctl restart php72-php-fpm\n# Details: https://www.getpagespeed.com/server-setup/php/php2shell-on-amazon-linux-2"
+    },
+    {
+      "id": "gps-amzn2",
+      "vendor": "Amazon Linux 2, PHP 7.2",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "^\\d+\\.amzn2$",
+      "upstream": "^7\\.2\\.",
+      "fixed": {
+        "7.2": "7.2.34-33.amzn2"
+      },
+      "note": "AWS has no fix for the php7.2 extras topic. The GetPageSpeed 7.2.34-33.amzn2 build upgrades it in place. Free to install; commercial production use requires GetPageSpeed Ultra.",
+      "fix": "sudo yum -y install https://extras.getpagespeed.com/release-latest.rpm\nsudo yum -y update getpagespeed-extras-release\nsudo amazon-linux-extras install -y epel\nsudo yum --enablerepo=getpagespeed-extras-php72 upgrade 'php-*'\nsudo systemctl restart php-fpm\n# Details: https://www.getpagespeed.com/server-setup/php/php2shell-on-amazon-linux-2"
+    },
+    {
+      "id": "amazon-2-eol",
+      "vendor": "Amazon Linux 2",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "\\.amzn2(\\.|$)",
+      "upstream": "^(5|7|8\\.[01])\\.",
+      "verdict": "vulnerable",
+      "note": "AWS fixed only the php8.2 extras topic on Amazon Linux 2. Core PHP 5.4 is \"No Fix Planned\" and the php7.3 to php8.1 topics have no fix.",
+      "fix": "# AWS ships no fix for this PHP on Amazon Linux 2. Move to the fixed php8.2\n# extras topic, or ask GetPageSpeed for a patched build of this version:\n# https://www.getpagespeed.com/server-setup/php/php2shell-on-amazon-linux-2"
+    },
+    {
+      "id": "amazon-2",
+      "vendor": "Amazon Linux 2",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "\\.amzn2(\\.|$)",
+      "mode": "upstream",
+      "eol_note": "AWS fixed only the php8.2 extras topic on Amazon Linux 2 (ALAS2PHP8.2-2026-015).",
+      "fix": "sudo yum update 'php*'\nsudo systemctl restart php-fpm httpd"
     },
     {
       "id": "amazon-2023",

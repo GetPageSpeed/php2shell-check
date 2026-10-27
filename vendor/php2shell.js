@@ -202,6 +202,10 @@
     if (pkg.type === 'deb') { return "sudo apt update && sudo apt install --only-upgrade $(dpkg -l 'php*' | awk '/^ii/{print $2}')"; }
     if (pkg.type === 'apk') { return 'apk update && apk upgrade'; }
     if (pkg.type === 'rpm') {
+      // Panel-managed PHP updates by its own package prefix: 'php*' never matches ea-php or alt-php.
+      if (/^ea-php/.test(pkg.name)) { return "yum update 'ea-php*' && /scripts/restartsrv_apache_php_fpm"; }
+      if (/^alt-php/.test(pkg.name)) { return "yum update 'alt-php*'"; }
+      if (/^plesk-php/.test(pkg.name)) { return 'plesk installer --select-release-current --upgrade-installed-components'; }
       if (/\.el7/.test(pkg.release || '')) { return 'yum-config-manager --enable getpagespeed-extras-php84 && yum install php84-getpagespeed-stack'; }
       return "sudo dnf upgrade 'php*'";
     }

@@ -88,3 +88,11 @@ setup() {
     run python3 -m unittest discover -s tests -p test_sync_page.py -v
     [ "$status" -eq 0 ]
 }
+
+@test "unrecognized panel PHP gets its prefix update, never the generic php* advice" {
+    run bash php2shell-check.sh --json --file tests/fixtures/cpanel-ea-php-unrecognized.txt
+    [ "$status" -eq 3 ]
+    fix=$(node -pe 'JSON.parse(process.argv[1]).results[0].fix' "$output")
+    [[ "$fix" == *"yum update 'ea-php*'"* ]]
+    [[ "$fix" != *"'php*'"* ]]
+}
