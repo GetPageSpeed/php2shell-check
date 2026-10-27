@@ -16,7 +16,7 @@ bash php2shell-check.sh
 
 Keep CentOS 7 servers patched. php.net fixed only PHP 8.2 and newer. Remi stopped building for CentOS 7 in June 2024, so Remi's CentOS 7 packages (PHP 5.6 to 8.3) will never get this fix.
 
-GetPageSpeed rebuilt every Remi CentOS 7 PHP, 5.6 to 8.4, with PHP2Shell fixed: same package names, so `yum upgrade` replaces them in place, and PECL extensions and ionCube keep working. Free to install, no account or signup; personal, development and evaluation use is free, while commercial production use requires [GetPageSpeed Ultra](https://www.getpagespeed.com/repo-subscribe#ultra-annual).
+GetPageSpeed's Everpatch rebuilt every Remi CentOS 7 PHP, 5.6 to 8.4, with PHP2Shell fixed: same package names, so `yum upgrade` replaces them in place, and PECL extensions and ionCube keep working. Free to install, no account or signup; personal, development and evaluation use is free. Commercial production requires [GetPageSpeed Ultra](https://www.getpagespeed.com/repo-subscribe#ultra-annual) for up to 10 servers running your own organization's services, or [Fleet](https://www.getpagespeed.com/fleet-subscribe) for client servers you administer or larger fleets. See the [repository terms](https://www.getpagespeed.com/terms#free-channels).
 
 Patched builds: 5.6.40-44.el7, 7.0.33-46.el7, 7.1.33-35.el7, 7.2.34-30.el7, 7.3.33-26.el7, 7.4.33-35.el7, 8.0.30-25.el7, 8.1.34-8.el7, 8.2.35-2.el7, 8.3.36-2.el7, 8.4.27-3.el7.
 
@@ -40,9 +40,19 @@ Software collections need no extra channel. After upgrading, `php -v` prints "Bu
 
 See [PHP2Shell EOL fixes](https://www.getpagespeed.com/php2shell#eol) and [CentOS 7 patching](https://www.getpagespeed.com/eol/centos-7).
 
-## Ubuntu 20.04 / 18.04, Debian 10
+## Everpatch PHP for Ubuntu and Debian
 
-The same repository ships patched DEB packages for the suites the sury PPA dropped: php7.4 / php8.0 / php8.1 for Ubuntu 20.04 (1:7.4.33-31+gps1, 1:8.0.30-25+gps1, 8.1.34-9+gps1), php7.2 for Ubuntu 18.04 (7.2.34-66+gps1) and php7.3 for Debian 10 (7.3.33-35+gps1). See [PHP2Shell on Ubuntu and Debian](https://www.getpagespeed.com/server-setup/php/php2shell-on-ubuntu-debian).
+Everpatch also ships PHP2Shell-fixed DEB packages for these legacy releases:
+
+| Operating system | PHP branches | Architecture |
+| --- | --- | --- |
+| Ubuntu 20.04 (focal) | 7.4, 8.0, 8.1, 8.2, 8.3, 8.4 | amd64 |
+| Ubuntu 18.04 (bionic) | 7.2 | amd64 |
+| Debian 10 (buster) | 7.3 | amd64 |
+
+The packages keep the existing names and configuration layout, so you can update your current PHP branch while planning the OS migration. Restart the affected PHP services after upgrading. These are PHP packages; they do not provide complete Ubuntu OS maintenance.
+
+The [Ubuntu and Debian guide](https://www.getpagespeed.com/server-setup/php/php2shell-on-ubuntu-debian) lists exact package releases and upgrade commands. Personal, development and evaluation use is free. Commercial production requires [Ultra](https://www.getpagespeed.com/repo-subscribe#ultra-annual) for up to 10 own-organization servers, or [Fleet](https://www.getpagespeed.com/fleet-subscribe) for administered client servers or larger fleets, under the [repository terms](https://www.getpagespeed.com/terms#free-channels).
 
 ## Usage and exit codes
 
