@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-27",
+  "updated": "2026-10-29",
   "cves": [
     "CVE-2026-109618",
     "CVE-2026-109619"
@@ -56,6 +56,19 @@
       "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum --enablerepo=getpagespeed-extras-php{nodot} upgrade 'php-*'\nsystemctl restart php-fpm"
     },
     {
+      "id": "gps-el6-base",
+      "vendor": "GetPageSpeed (CentOS 6)",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "^\\d+\\.el6$",
+      "fixed": {
+        "5.3.3": "5.3.3-51.el6",
+        "7.0.33": "7.0.33-49.el6",
+        "7.1.33": "7.1.33-40.el6"
+      },
+      "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum --enablerepo=getpagespeed-extras-php{nodot} upgrade 'php*'\nservice php-fpm restart; service httpd restart"
+    },
+    {
       "id": "remi-el7",
       "vendor": "Remi (CentOS 7)",
       "type": "rpm",
@@ -88,6 +101,17 @@
       "verdict": "vulnerable",
       "note": "CentOS 7 is end-of-life and its stock PHP 5.4.16 will never get this fix. The GetPageSpeed php54 channel replaces it in place with a patched 5.4.45 (same package names, extensions and ionCube keep working).",
       "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum --enablerepo=getpagespeed-extras-php54 upgrade php 'php-*'\nsystemctl restart httpd php-fpm"
+    },
+    {
+      "id": "centos6-base",
+      "vendor": "CentOS 6 base",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "^\\d+\\.el6(_\\d+)?(\\.centos)?$",
+      "upstream": "^5\\.3\\.",
+      "verdict": "vulnerable",
+      "note": "CentOS 6 is end-of-life and its stock PHP 5.3.3 will never get this fix. The GetPageSpeed base repository replaces it in place with a patched 5.3.3 (same package names and extensions).",
+      "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum upgrade 'php*'\nservice php-fpm restart; service httpd restart"
     },
     {
       "id": "remi-el8plus-eol",
@@ -360,8 +384,32 @@
       "fixed": {
         "7.2": "7.2.34-33.amzn2"
       },
-      "note": "AWS has no fix for the php7.2 extras topic. The GetPageSpeed 7.2.34-33.amzn2 build upgrades it in place. Free to install; commercial production use requires GetPageSpeed Ultra.",
+      "note": "AWS has no fix for the php7.2 extras topic. The GetPageSpeed 7.2.34-33.amzn2 build upgrades it in place. Free to install; commercial production use requires GetPageSpeed Ultra, or GetPageSpeed Fleet for servers that host client websites.",
       "fix": "sudo yum -y install https://extras.getpagespeed.com/release-latest.rpm\nsudo yum -y update getpagespeed-extras-release\nsudo amazon-linux-extras install -y epel\nsudo yum --enablerepo=getpagespeed-extras-php72 upgrade 'php-*'\nsudo systemctl restart php-fpm\n# Details: https://www.getpagespeed.com/server-setup/php/php2shell-on-amazon-linux-2"
+    },
+    {
+      "id": "gps-amzn2-php74-scl",
+      "vendor": "GetPageSpeed (Amazon Linux 2, software collection)",
+      "type": "rpm",
+      "name": "^php74-php(-[a-z0-9_-]+)?$",
+      "release": "^\\d+\\.amzn2$",
+      "fixed": {
+        "7.4": "7.4.33-40.amzn2"
+      },
+      "fix": "sudo yum -y install https://extras.getpagespeed.com/release-latest.rpm\nsudo yum -y update getpagespeed-extras-release\nsudo amazon-linux-extras install -y epel\nsudo yum upgrade 'php74-php*'\nsudo systemctl restart php74-php-fpm\n# Details: https://www.getpagespeed.com/server-setup/php/php2shell-on-amazon-linux-2"
+    },
+    {
+      "id": "gps-amzn2-php74",
+      "vendor": "Amazon Linux 2, PHP 7.4",
+      "type": "rpm",
+      "name": "^php(-[a-z0-9_-]+)?$",
+      "release": "^\\d+\\.amzn2$",
+      "upstream": "^7\\.4\\.",
+      "fixed": {
+        "7.4": "7.4.33-40.amzn2"
+      },
+      "note": "AWS has no fix for the php7.4 extras topic. The GetPageSpeed 7.4.33-40.amzn2 build is a drop-in upgrade for Remi's remi-php74 packages. Free to install; commercial production use requires GetPageSpeed Ultra, or GetPageSpeed Fleet for servers that host client websites.",
+      "fix": "sudo yum -y install https://extras.getpagespeed.com/release-latest.rpm\nsudo yum -y update getpagespeed-extras-release\nsudo amazon-linux-extras install -y epel\nsudo yum --enablerepo=getpagespeed-extras-php74 upgrade 'php-*'\nsudo systemctl restart php-fpm\n# Details: https://www.getpagespeed.com/server-setup/php/php2shell-on-amazon-linux-2"
     },
     {
       "id": "amazon-2-eol",
@@ -410,7 +458,7 @@
         "8.3.36": "8.3.36-1+gps1",
         "8.4.27": "8.4.27-1+gps1"
       },
-      "note": "Free to install; commercial production use requires GetPageSpeed Ultra.",
+      "note": "Free to install; commercial production use requires GetPageSpeed Ultra, or GetPageSpeed Fleet for servers that host client websites.",
       "fix": "wget https://extras.getpagespeed.com/release-latest.deb\nsudo apt install ./release-latest.deb\nsudo apt update && sudo apt upgrade 'php{branch}-*'\nsudo systemctl restart php{branch}-fpm"
     },
     {
