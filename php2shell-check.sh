@@ -897,14 +897,60 @@ judge() {
     return 0
 }
 
+# GetPageSpeed builds print "Built by GetPageSpeed LLC (<version>-<release>)" in
+# php -v (mirrors gpsBanner in vendor/php2shell.js). Sets BANNER_VERSION/RELEASE.
+gps_banner() {
+    local regex='Built by GetPageSpeed LLC \(([0-9]+\.[0-9]+\.[0-9]+)-([0-9][^[:space:]()]*)\)' restore=0
+    BANNER_VERSION='' BANNER_RELEASE=
+    shopt -q nocasematch || restore=1
+    shopt -s nocasematch
+    if [[ $1 =~ $regex ]]; then
+        BANNER_VERSION=${BASH_REMATCH[1]} BANNER_RELEASE=${BASH_REMATCH[2]}
+    fi
+    ((restore)) && shopt -u nocasematch
+    return 0
+}
+
+# Judge the banner NVR with the GetPageSpeed rpm rules (mirrors judgeGpsBanner).
+# The banner cannot tell the php package from a software collection (phpNN-php),
+# whose thresholds differ per branch, so both shapes are judged and the stricter
+# verdict wins. Returns 1 (state untouched) when no GetPageSpeed rule applies.
+judge_gps_banner() {
+    local raw=$P_RAW shape rank best_rank=0 found=0 seen='' kinds=0 nodot shapes
+    local b_verdict b_vendor b_note b_fix b_fixed_in b_has_fixed b_has_fix b_has_branch b_branch
+    upstream_of "$BANNER_VERSION"
+    nodot=${U_BRANCH/./}
+    shapes=("php" "php$nodot-php")
+    for shape in "${shapes[@]}"; do
+        P_TYPE=rpm P_NAME=$shape P_VERSION=$BANNER_VERSION P_RELEASE=$BANNER_RELEASE P_FULL=$BANNER_VERSION-$BANNER_RELEASE P_RAW=$raw
+        judge
+        [[ -z $VENDOR ]] && continue
+        [[ $seen == *"|$VERDICT|"* ]] || { seen+="|$VERDICT|"; kinds=$((kinds+1)); }
+        case $VERDICT in vulnerable) rank=3 ;; unknown) rank=2 ;; *) rank=1 ;; esac
+        ((rank > best_rank)) || continue
+        best_rank=$rank found=1
+        b_verdict=$VERDICT b_vendor=$VENDOR b_note=$NOTE b_fix=$FIX b_fixed_in=$FIXED_IN
+        b_has_fixed=$HAS_FIXED b_has_fix=$HAS_FIX b_has_branch=$HAS_BRANCH b_branch=${BRANCH-}
+    done
+    P_TYPE=phpv P_NAME=php P_VERSION=$BANNER_VERSION P_RELEASE=$BANNER_RELEASE P_FULL=$BANNER_VERSION-$BANNER_RELEASE P_RAW=$raw
+    ((found)) || return 1
+    VERDICT=$b_verdict VENDOR=$b_vendor FIX=$b_fix FIXED_IN=$b_fixed_in
+    HAS_FIXED=$b_has_fixed HAS_FIX=$b_has_fix HAS_BRANCH=$b_has_branch BRANCH=$b_branch
+    NOTE=$b_note
+    [[ -n $NOTE ]] && NOTE+=' '
+    NOTE+="Judged from the build release in the php -v banner ($P_FULL)."
+    ((kinds > 1)) && NOTE+=' The banner cannot tell the php package from a software collection, so the stricter threshold applies.'
+    return 0
+}
+
 package_json() {
     json_quote "$P_TYPE"; PKG_JSON="{\"type\":$JSON"
     json_quote "$P_NAME"; PKG_JSON+=",\"name\":$JSON"
     json_quote "$P_VERSION"; PKG_JSON+=",\"version\":$JSON"
-    if [[ $P_TYPE != phpv ]]; then
+    if [[ $P_TYPE != phpv || -n $P_RELEASE ]]; then
         json_quote "$P_FULL"; PKG_JSON+=",\"full\":$JSON"
     fi
-    if [[ $P_TYPE == rpm || $P_TYPE == apk ]]; then
+    if [[ $P_TYPE == rpm || $P_TYPE == apk || -n $P_RELEASE ]]; then
         json_quote "$P_RELEASE"; PKG_JSON+=",\"release\":$JSON"
     fi
     json_quote "$P_RAW"; PKG_JSON+=",\"raw\":$JSON}"
@@ -963,15 +1009,20 @@ main() {
     else printf '%s\n' 'No supported package manager found.' >&2; return 2; fi
     local lower=${text,,}
     [[ $lower == *'built by getpagespeed llc'* ]] && gps_built=1
+    gps_banner "$text"
     while IFS='' read -r line || [[ -n $line ]]; do
         parse_line "$line" || continue
         is_runtime || continue
         family_key; key=$KEY
         if [[ -z ${ranks[$key]} ]]; then order+=("$key"); fi
-        judge
+        if [[ $P_TYPE == phpv && -n $BANNER_VERSION ]]; then
+            judge_gps_banner || judge
+        else
+            judge
+        fi
         case $VERDICT in vulnerable) rank=3 ;; unknown) rank=2 ;; patched) rank=1 ;; esac
         if ((rank <= ${ranks[$key]:-0})); then continue; fi
-        if [[ $P_TYPE == phpv ]] && ((gps_built)); then
+        if [[ $P_TYPE == phpv && -z $P_RELEASE ]] && ((gps_built)); then
             NOTE+=" This binary was built by GetPageSpeed: run rpm -qa 'php*-common' to see its release."
         fi
         result_json

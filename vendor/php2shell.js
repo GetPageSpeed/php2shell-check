@@ -249,9 +249,41 @@
 
   var RANK = { vulnerable: 3, unknown: 2, patched: 1 };
 
+  // GetPageSpeed builds print "Built by GetPageSpeed LLC (<version>-<release>)" in
+  // php -v (e.g. 7.1.33-42.el7, 7.4.33-41.amzn2). Returns the NVR or null.
+  function gpsBanner(text) {
+    var m = /Built by GetPageSpeed LLC \((\d+\.\d+\.\d+)-(\d[^\s()]*)\)/i.exec(text || '');
+    return m ? { version: m[1], release: m[2] } : null;
+  }
+
+  // Judge the banner NVR with the same GetPageSpeed rpm rules as rpm -qa. The
+  // banner cannot tell the plain php package from a software collection
+  // (php71-php), whose thresholds differ per branch, so judge both shapes and
+  // keep the stricter verdict. Returns null when no GetPageSpeed rule applies.
+  function judgeGpsBanner(banner, phpvPkg) {
+    var u = upstreamOf(banner.version);
+    var nodot = u ? u.branch.replace('.', '') : '';
+    var shapes = ['php', 'php' + nodot + '-php'];
+    var best = null;
+    var verdicts = {};
+    for (var i = 0; i < shapes.length; i++) {
+      var pkg = { type: 'rpm', name: shapes[i], version: banner.version, release: banner.release, full: banner.version + '-' + banner.release, raw: phpvPkg.raw };
+      var r = judge(pkg);
+      if (!r.vendor) { continue; }
+      verdicts[r.verdict] = true;
+      if (!best || RANK[r.verdict] > RANK[best.verdict]) { best = r; }
+    }
+    if (!best) { return null; }
+    best.pkg = { type: 'phpv', name: 'php', version: banner.version, release: banner.release, full: banner.version + '-' + banner.release, raw: phpvPkg.raw };
+    best.note = (best.note ? best.note + ' ' : '') + 'Judged from the build release in the php -v banner (' + best.pkg.full + ').' +
+      (Object.keys(verdicts).length > 1 ? ' The banner cannot tell the php package from a software collection, so the stricter threshold applies.' : '');
+    return best;
+  }
+
   function check(text) {
     var lines = String(text || '').split(/\r?\n/);
     var gpsBuilt = /Built by GetPageSpeed LLC/i.test(text || '');
+    var banner = gpsBanner(text);
     var families = {};
     var order = [];
     for (var i = 0; i < lines.length; i++) {
@@ -266,10 +298,10 @@
       var group = families[order[k]];
       var worst = null;
       for (var j = 0; j < group.length; j++) {
-        var r = judge(group[j]);
+        var r = (group[j].type === 'phpv' && banner && judgeGpsBanner(banner, group[j])) || judge(group[j]);
         if (!worst || RANK[r.verdict] > RANK[worst.verdict]) { worst = r; }
       }
-      if (worst.pkg.type === 'phpv' && gpsBuilt) {
+      if (worst.pkg.type === 'phpv' && gpsBuilt && !worst.pkg.release) {
         worst.note += ' This binary was built by GetPageSpeed: run rpm -qa \'php*-common\' to see its release.';
       }
       results.push(worst);
@@ -313,7 +345,7 @@
       var li = el('li', 'gps-p2s-finding gps-p2s-finding-' + r.verdict);
       var head = el('p', 'gps-p2s-finding-head');
       head.appendChild(el('span', 'gps-p2s-badge gps-p2s-badge-' + r.verdict, LABELS[r.verdict]));
-      head.appendChild(el('code', null, r.pkg.type === 'phpv' ? 'php -v: ' + r.pkg.version : r.pkg.name + ' ' + (r.pkg.full || r.pkg.version)));
+      head.appendChild(el('code', null, r.pkg.type === 'phpv' ? 'php -v: ' + (r.pkg.full || r.pkg.version) : r.pkg.name + ' ' + (r.pkg.full || r.pkg.version)));
       li.appendChild(head);
       var detail = [];
       if (r.vendor) { detail.push(r.vendor + '.'); }

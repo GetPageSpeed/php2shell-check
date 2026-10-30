@@ -1,0 +1,4 @@
+PHP 7.3.33 (cli) (built: Oct 24 2026 12:00:00) ( NTS )
+Copyright (c) The PHP Group
+Zend Engine v3.1.0, Copyright (c) 1998-2018 Zend Technologies
+Built by GetPageSpeed LLC (7.3.33-32.el7)

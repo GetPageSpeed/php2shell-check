@@ -66,7 +66,7 @@ bash php2shell-check.sh --help
 bash php2shell-check.sh --version
 ```
 
-`--file` accepts the web checker's rpm, dpkg, apk, and `php -v` formats. `php -v` cannot identify vendor backports. JSON reports use the same fields and verdicts as the web checker (`patched`, `vulnerable`, `unknown`, or overall `none`). Human output uses `[FIXED]`, `[VULNERABLE]`, and `[UNKNOWN]`.
+`--file` accepts the web checker's rpm, dpkg, apk, and `php -v` formats. `php -v` cannot identify vendor backports, except GetPageSpeed builds: their banner `Built by GetPageSpeed LLC (7.1.33-42.el7)` carries the package release and is judged with the same rules as `rpm -qa` (the banner cannot tell the plain `php` package from a software collection, so the stricter threshold applies). JSON reports use the same fields and verdicts as the web checker (`patched`, `vulnerable`, `unknown`, or overall `none`). Human output uses `[FIXED]`, `[VULNERABLE]`, and `[UNKNOWN]`.
 
 | Exit | Meaning |
 | --- | --- |
