@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-29",
+  "updated": "2026-10-30",
   "cves": [
     "CVE-2026-109618",
     "CVE-2026-109619"
@@ -16,7 +16,7 @@
       "id": "gps-el7-scl",
       "vendor": "GetPageSpeed (CentOS 7, software collection)",
       "type": "rpm",
-      "name": "^php(54|56|70|71|72|73|74|80|81|82|83|84)-php(-[a-z0-9_-]+)?$",
+      "name": "^php(54|56|70|71|72|73|74|80|81|82|83|84|85)-php(-[a-z0-9_-]+)?$",
       "release": "^\\d+\\.el7$",
       "fixed": {
         "5.4.45": "5.4.45-20.el7",
@@ -30,7 +30,8 @@
         "8.1": "8.1.34-7.el7",
         "8.2": "8.2.35-2.el7",
         "8.3": "8.3.36-2.el7",
-        "8.4": "8.4.27-3.el7"
+        "8.4": "8.4.27-3.el7",
+        "8.5": "8.5.12-1.el7"
       },
       "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum upgrade '{scl}-php*'\nsystemctl restart {scl}-php-fpm"
     },
@@ -51,7 +52,9 @@
         "8.0.30": "8.0.30-22.el7",
         "8.1": "8.1.34-7.el7",
         "8.2": "8.2.35-2.el7",
-        "8.3": "8.3.36-2.el7"
+        "8.3": "8.3.36-2.el7",
+        "8.4": "8.4.27-1.el7",
+        "8.5": "8.5.12-1.el7"
       },
       "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum --enablerepo=getpagespeed-extras-php{nodot} upgrade 'php-*'\nsystemctl restart php-fpm"
     },
