@@ -482,7 +482,7 @@ R_RELEASE[24]="^[0-9]+\\.amzn2\$"
 R_UPSTREAM[24]="^7\\.4\\."
 R_VERDICT[24]=""
 R_MODE[24]=""
-R_NOTE[24]="AWS has no fix for the php7.4 extras topic. The GetPageSpeed 7.4.33-40.amzn2 build is a drop-in upgrade for Remi's remi-php74 packages. Free to install; commercial production use requires GetPageSpeed Ultra, or GetPageSpeed Fleet for servers that host client websites."
+R_NOTE[24]="AWS has no fix for the php7.4 extras topic. The GetPageSpeed 7.4.33-40.amzn2 build upgrades it in place, and is a drop-in upgrade for Remi's remi-php74 packages. Free to install; commercial production use requires GetPageSpeed Ultra, or GetPageSpeed Fleet for servers that host client websites."
 R_EOL_NOTE[24]=""
 R_FIX[24]="sudo yum -y install https://extras.getpagespeed.com/release-latest.rpm
 sudo yum -y update getpagespeed-extras-release

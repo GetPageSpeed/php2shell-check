@@ -411,7 +411,7 @@
       "fixed": {
         "7.4": "7.4.33-40.amzn2"
       },
-      "note": "AWS has no fix for the php7.4 extras topic. The GetPageSpeed 7.4.33-40.amzn2 build is a drop-in upgrade for Remi's remi-php74 packages. Free to install; commercial production use requires GetPageSpeed Ultra, or GetPageSpeed Fleet for servers that host client websites.",
+      "note": "AWS has no fix for the php7.4 extras topic. The GetPageSpeed 7.4.33-40.amzn2 build upgrades it in place, and is a drop-in upgrade for Remi's remi-php74 packages. Free to install; commercial production use requires GetPageSpeed Ultra, or GetPageSpeed Fleet for servers that host client websites.",
       "fix": "sudo yum -y install https://extras.getpagespeed.com/release-latest.rpm\nsudo yum -y update getpagespeed-extras-release\nsudo amazon-linux-extras install -y epel\nsudo yum --enablerepo=getpagespeed-extras-php74 upgrade 'php-*'\nsudo systemctl restart php-fpm\n# Details: https://www.getpagespeed.com/server-setup/php/php2shell-on-amazon-linux-2"
     },
     {
