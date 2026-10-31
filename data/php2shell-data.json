@@ -102,8 +102,8 @@
       "release": "^\\d+\\.el7(_\\d+)?(\\.centos)?$",
       "upstream": "^5\\.4\\.",
       "verdict": "vulnerable",
-      "note": "CentOS 7 is end-of-life and its stock PHP 5.4.16 will never get this fix. The GetPageSpeed php54 channel replaces it in place with a patched 5.4.45 (same package names, extensions and ionCube keep working).",
-      "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum --enablerepo=getpagespeed-extras-php54 upgrade php 'php-*'\nsystemctl restart httpd php-fpm"
+      "note": "CentOS 7 is end-of-life and its stock PHP 5.4.16 will never get this fix from CentOS. The GetPageSpeed main repository replaces it in place with a patched 5.4.45 (same package names, extensions and ionCube keep working), so a plain yum update applies it.",
+      "fix": "yum -y install https://extras.getpagespeed.com/release-latest.rpm\nyum upgrade php 'php-*'\nsystemctl restart httpd php-fpm"
     },
     {
       "id": "centos6-base",
