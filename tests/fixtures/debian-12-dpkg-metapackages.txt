@@ -1,0 +1,7 @@
+ii  php-common         2:93             all          Common files for PHP packages
+ii  php8.2-cli         8.2.36-1~deb12u1 arm64        command-line interpreter for the PHP scripting language
+ii  php8.2-common      8.2.36-1~deb12u1 arm64        documentation, examples and common module for PHP
+ii  php8.2-fpm         8.2.36-1~deb12u1 arm64        server-side, HTML-embedded scripting language (FPM-CGI binary)
+ii  php8.2-opcache     8.2.36-1~deb12u1 arm64        Zend OpCache module for PHP
+ii  php8.2-readline    8.2.36-1~deb12u1 arm64        readline module for PHP
+ii  php-fpm            2:8.2+93         all          server-side (default)

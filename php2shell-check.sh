@@ -757,6 +757,12 @@ parse_line() {
 
 is_runtime() {
     [[ $P_TYPE == phpv ]] && return 0
+    # Debian's version-less metapackages (php-common 2:93, php-fpm 2:8.2+93) only point at a
+    # php8.x package; the real runtime sits on its own line.
+    if [[ $P_TYPE == deb && $P_NAME =~ ^php(-[a-z]+)?$ ]]; then
+        upstream_of "$P_VERSION"
+        [[ -z $U_FULL ]] && return 1
+    fi
     local excluded='pecl|pear|-ioncube|-imagick|-redis|-memcache|-apcu|-xdebug|-igbinary|-msgpack|-mcrypt|-oci8|-sodium'
     [[ $P_NAME =~ $excluded ]] && return 1
     local runtime='(^|-)php[0-9]*(-(fpm|cli|common|cgi|litespeed|embedded|dbg|devel))?$|^libapache2-mod-php|^php[0-9]+\.[0-9]+(-(fpm|cli|common|cgi|phpdbg))?$|^php[0-9]*-(fpm|cli|common|cgi|litespeed)$'

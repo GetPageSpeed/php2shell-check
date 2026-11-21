@@ -9,6 +9,12 @@
  * 2. URL check: calls /wp-json/getpagespeed/v1/php2shell-check and explains
  *    the advertised version. It never claims a site is safe.
  *
+ * Campaign-aware: makeEngine(data) closes over one data set, and the page data's
+ * optional "campaign" object (tool, name, changelog_grep, guide_label, sample)
+ * names the campaign in analytics and copy; defaults reproduce /php2shell. An
+ * optional second data set in #gps-p2s-data-also adds an "also" verdict card
+ * (judged by its own engine) after the main one when packages are found.
+ *
  * Vanilla JS, no dependencies. window.gpsPhp2Shell is exposed for tests.
  */
 (function () {
@@ -17,12 +23,22 @@
   var dataEl = document.getElementById('gps-p2s-data');
   var DATA = {};
   try { DATA = JSON.parse(dataEl ? dataEl.textContent : '{}'); } catch (e) { DATA = {}; }
-  var FIXED = DATA.fixed_upstream || {};
-  var RULES = DATA.rules || [];
+  var CAMPAIGN_DEFAULTS = {
+    tool: 'php2shell',
+    name: 'PHP2Shell',
+    changelog_grep: '2026-10961[89]',
+    guide_label: 'CentOS 7 PHP2Shell guide',
+    sample: 'php74-php-common-7.4.33-15.el7.remi.x86_64\nphp74-php-fpm-7.4.33-15.el7.remi.x86_64\nphp74-php-pecl-redis5-5.3.7-1.el7.remi.x86_64'
+  };
+
+  function campaignOf(data, key) {
+    var c = data && data.campaign;
+    return c && c[key] ? c[key] : CAMPAIGN_DEFAULTS[key];
+  }
 
   function gpsTrack(evt, params) {
     if (!window.gtag) { return; }
-    try { gtag('event', evt, Object.assign({ tool: 'php2shell' }, params || {})); } catch (e) {}
+    try { gtag('event', evt, Object.assign({ tool: campaignOf(DATA, 'tool') }, params || {})); } catch (e) {}
   }
 
   // ---------- version comparison (rpmvercmp/dpkg hybrid, "~" sorts first) ----------
@@ -69,15 +85,6 @@
     return m ? { full: m[1] + '.' + m[2] + '.' + m[3], branch: m[1] + '.' + m[2] } : null;
   }
 
-  function upstreamStatus(version) {
-    var u = upstreamOf(version);
-    if (!u) { return { status: 'unknown' }; }
-    if (vercmp(u.full, DATA.min_affected || '5.4.0') < 0) { return { status: 'unknown', branch: u.branch, ancient: true }; }
-    var fixed = FIXED[u.branch];
-    if (!fixed) { return { status: 'eol', branch: u.branch }; }
-    return { status: vercmp(u.full, fixed) >= 0 ? 'fixed' : 'vulnerable', branch: u.branch, fixed: fixed };
-  }
-
   // ---------- parsing ----------
   var ARCH = /\.(x86_64|aarch64|noarch|i686|i386|ppc64le|s390x|src)$/;
 
@@ -122,6 +129,9 @@
 
   function isRuntime(pkg) {
     if (pkg.type === 'phpv') { return true; }
+    // Debian's version-less metapackages (php-common 2:93, php-fpm 2:8.2+93) only point at a
+    // php8.x package; the real runtime sits on its own line.
+    if (pkg.type === 'deb' && /^php(-[a-z]+)?$/.test(pkg.name) && !upstreamOf(pkg.version)) { return false; }
     if (/pecl|pear|-ioncube|-imagick|-redis|-memcache|-apcu|-xdebug|-igbinary|-msgpack|-mcrypt|-oci8|-sodium/.test(pkg.name)) { return false; }
     return RUNTIME.test(pkg.name);
   }
@@ -141,63 +151,6 @@
       .replace(/\{pkg\}/g, pkg.name);
   }
 
-  function ruleById(id) {
-    for (var i = 0; i < RULES.length; i++) { if (RULES[i].id === id) { return RULES[i]; } }
-    return null;
-  }
-
-  function gpsFixFor(pkg, branch) {
-    var rule = /^php\d+-php/.test(pkg.name) ? ruleById('gps-el7-scl') : ruleById('gps-el7-base');
-    return rule ? fillFix(rule.fix, pkg, branch) : '';
-  }
-
-  function judgeWithRule(rule, pkg) {
-    if (rule.type !== pkg.type) { return null; }
-    if (!new RegExp(rule.name).test(pkg.name)) { return null; }
-    var subject = pkg.type === 'deb' ? pkg.full : pkg.release;
-    if (rule.release && !new RegExp(rule.release).test(subject || '')) { return null; }
-    if (rule.upstream && !new RegExp(rule.upstream).test(pkg.version)) { return null; }
-
-    var u = upstreamOf(pkg.version);
-    var branch = u ? u.branch : '';
-
-    if (rule.verdict === 'vulnerable') {
-      var fix = rule.fix_by_branch && rule.fix_by_branch[branch] === 'gps-el7' ? gpsFixFor(pkg, branch) : fillFix(rule.fix, pkg, branch);
-      return { verdict: 'vulnerable', vendor: rule.vendor, note: rule.note || '', fix: fix };
-    }
-    if (rule.verdict === 'patched') {
-      return { verdict: 'patched', vendor: rule.vendor, note: rule.note || '' };
-    }
-    // A vendor's explicit backport entry for this branch beats the generic
-    // upstream mode: Surý, for example, rebases 8.2+ (upstream version is
-    // authoritative) but backports the fix into EOL branches it still builds.
-    var fixedMap = rule.fixed || {};
-    var target = u ? (fixedMap[u.full] || fixedMap[branch]) : null;
-    if (target) {
-      var installed = pkg.type === 'deb' ? pkg.full : pkg.version + '-' + pkg.release;
-      if (vercmp(installed, target) >= 0) {
-        return { verdict: 'patched', vendor: rule.vendor, fixedIn: target, note: rule.note || '' };
-      }
-      return { verdict: 'vulnerable', vendor: rule.vendor, fixedIn: target, note: rule.note || '', fix: fillFix(rule.fix, pkg, branch) };
-    }
-
-    if (rule.mode === 'upstream') {
-      // This vendor rebases to the fixed upstream release, so the version number is authoritative.
-      var st = upstreamStatus(pkg.version);
-      if (st.status === 'fixed') {
-        return { verdict: 'patched', vendor: rule.vendor, fixedIn: st.fixed, note: rule.note || '' };
-      }
-      if (st.status === 'vulnerable') {
-        return { verdict: 'vulnerable', vendor: rule.vendor, fixedIn: st.fixed, note: 'PHP ' + pkg.version + ' predates the fix.', fix: fillFix(rule.fix, pkg, branch) };
-      }
-      return { verdict: 'unknown', vendor: rule.vendor, note: rule.eol_note || '', fix: fillFix(rule.fix, pkg, branch) };
-    }
-
-    // No entry for this branch: upstream 8.2+ carries the fix regardless of vendor
-    // once the version is high enough, so let later rules or the generic judge decide.
-    return null;
-  }
-
   function genericFix(pkg) {
     if (pkg.type === 'deb') { return "sudo apt update && sudo apt install --only-upgrade $(dpkg -l 'php*' | awk '/^ii/{print $2}')"; }
     if (pkg.type === 'apk') { return 'apk update && apk upgrade'; }
@@ -212,41 +165,6 @@
     return '';
   }
 
-  function judge(pkg) {
-    for (var i = 0; i < RULES.length; i++) {
-      var r = judgeWithRule(RULES[i], pkg);
-      if (r) { r.pkg = pkg; return r; }
-    }
-    var s = upstreamStatus(pkg.version);
-    var out = { pkg: pkg, vendor: '', branch: s.branch };
-    if (s.status === 'fixed') {
-      out.verdict = 'patched';
-      out.note = 'PHP ' + pkg.version + ' carries the upstream fix (first fixed: ' + s.fixed + ').';
-      return out;
-    }
-    if (s.status === 'unknown') {
-      out.verdict = 'unknown';
-      out.note = s.ancient
-        ? 'PHP ' + pkg.version + ' is older than every branch the advisories assessed and has had no security fixes for years. Treat it as compromised-ready and replace it.'
-        : 'Could not read a PHP version from this line.';
-      return out;
-    }
-    if (pkg.type === 'phpv') {
-      out.verdict = 'unknown';
-      out.note = s.status === 'eol'
-        ? 'PHP ' + s.branch + ' got no upstream fix, so this build is vulnerable unless your vendor backported it, and php -v cannot show that. Paste your package list (rpm -qa or dpkg -l) for a definite answer.'
-        : 'Upstream PHP ' + pkg.version + ' is vulnerable (fixed in ' + s.fixed + '), but distributions backport the fix without changing this number. Paste your package list (rpm -qa or dpkg -l) for a definite answer.';
-      return out;
-    }
-    out.verdict = 'unknown';
-    out.note = (s.status === 'eol'
-      ? 'PHP ' + s.branch + ' got no upstream release with the fix.'
-      : 'Upstream ' + pkg.version + ' predates the fix (' + s.fixed + ').') +
-      ' This package comes from a vendor we have no rule for yet, so only its changelog can say whether the fix was backported: rpm -q --changelog ' + pkg.name + ' | grep -E "2026-10961[89]" (or apt changelog ' + pkg.name + ').';
-    out.fix = genericFix(pkg);
-    return out;
-  }
-
   var RANK = { vulnerable: 3, unknown: 2, patched: 1 };
 
   // GetPageSpeed builds print "Built by GetPageSpeed LLC (<version>-<release>)" in
@@ -256,62 +174,198 @@
     return m ? { version: m[1], release: m[2] } : null;
   }
 
-  // Judge the banner NVR with the same GetPageSpeed rpm rules as rpm -qa. The
-  // banner cannot tell the plain php package from a software collection
-  // (php71-php), whose thresholds differ per branch, so judge both shapes and
-  // keep the stricter verdict. Returns null when no GetPageSpeed rule applies.
-  function judgeGpsBanner(banner, phpvPkg) {
-    var u = upstreamOf(banner.version);
-    var nodot = u ? u.branch.replace('.', '') : '';
-    var shapes = ['php', 'php' + nodot + '-php'];
-    var best = null;
-    var verdicts = {};
-    for (var i = 0; i < shapes.length; i++) {
-      var pkg = { type: 'rpm', name: shapes[i], version: banner.version, release: banner.release, full: banner.version + '-' + banner.release, raw: phpvPkg.raw };
-      var r = judge(pkg);
-      if (!r.vendor) { continue; }
-      verdicts[r.verdict] = true;
-      if (!best || RANK[r.verdict] > RANK[best.verdict]) { best = r; }
+  // ---------- engine: everything that reads one data set ----------
+  function makeEngine(DATA) {
+    var FIXED = DATA.fixed_upstream || {};
+    var RULES = DATA.rules || [];
+
+    function upstreamStatus(version) {
+      var u = upstreamOf(version);
+      if (!u) { return { status: 'unknown' }; }
+      if (vercmp(u.full, DATA.min_affected || '5.4.0') < 0) { return { status: 'unknown', branch: u.branch, ancient: true }; }
+      var fixed = FIXED[u.branch];
+      if (!fixed) { return { status: 'eol', branch: u.branch }; }
+      return { status: vercmp(u.full, fixed) >= 0 ? 'fixed' : 'vulnerable', branch: u.branch, fixed: fixed };
     }
-    if (!best) { return null; }
-    best.pkg = { type: 'phpv', name: 'php', version: banner.version, release: banner.release, full: banner.version + '-' + banner.release, raw: phpvPkg.raw };
-    best.note = (best.note ? best.note + ' ' : '') + 'Judged from the build release in the php -v banner (' + best.pkg.full + ').' +
-      (Object.keys(verdicts).length > 1 ? ' The banner cannot tell the php package from a software collection, so the stricter threshold applies.' : '');
-    return best;
+
+    function ruleById(id) {
+      for (var i = 0; i < RULES.length; i++) { if (RULES[i].id === id) { return RULES[i]; } }
+      return null;
+    }
+
+    function gpsFixFor(pkg, branch) {
+      var rule = /^php\d+-php/.test(pkg.name) ? ruleById('gps-el7-scl') : ruleById('gps-el7-base');
+      return rule ? fillFix(rule.fix, pkg, branch) : '';
+    }
+
+    function judgeWithRule(rule, pkg) {
+      if (rule.type !== pkg.type) { return null; }
+      if (!new RegExp(rule.name).test(pkg.name)) { return null; }
+      var subject = pkg.type === 'deb' ? pkg.full : pkg.release;
+      if (rule.release && !new RegExp(rule.release).test(subject || '')) { return null; }
+      if (rule.upstream && !new RegExp(rule.upstream).test(pkg.version)) { return null; }
+
+      var u = upstreamOf(pkg.version);
+      var branch = u ? u.branch : '';
+
+      if (rule.verdict === 'vulnerable') {
+        var fix = rule.fix_by_branch && rule.fix_by_branch[branch] === 'gps-el7' ? gpsFixFor(pkg, branch) : fillFix(rule.fix, pkg, branch);
+        return { verdict: 'vulnerable', vendor: rule.vendor, note: rule.note || '', fix: fix };
+      }
+      if (rule.verdict === 'patched') {
+        return { verdict: 'patched', vendor: rule.vendor, note: rule.note || '' };
+      }
+      // A vendor's explicit backport entry for this branch beats the generic
+      // upstream mode: Surý, for example, rebases 8.2+ (upstream version is
+      // authoritative) but backports the fix into EOL branches it still builds.
+      var fixedMap = rule.fixed || {};
+      var target = u ? (fixedMap[u.full] || fixedMap[branch]) : null;
+      if (target) {
+        var installed = pkg.type === 'deb' ? pkg.full : pkg.version + '-' + pkg.release;
+        if (vercmp(installed, target) >= 0) {
+          return { verdict: 'patched', vendor: rule.vendor, fixedIn: target, note: rule.note || '' };
+        }
+        return { verdict: 'vulnerable', vendor: rule.vendor, fixedIn: target, note: rule.note || '', fix: fillFix(rule.fix, pkg, branch) };
+      }
+
+      if (rule.mode === 'upstream') {
+        // This vendor rebases to the fixed upstream release, so the version number is authoritative.
+        var st = upstreamStatus(pkg.version);
+        if (st.status === 'fixed') {
+          return { verdict: 'patched', vendor: rule.vendor, fixedIn: st.fixed, note: rule.note || '' };
+        }
+        if (st.status === 'vulnerable') {
+          return { verdict: 'vulnerable', vendor: rule.vendor, fixedIn: st.fixed, note: 'PHP ' + pkg.version + ' predates the fix.', fix: fillFix(rule.fix, pkg, branch) };
+        }
+        return { verdict: 'unknown', vendor: rule.vendor, note: rule.eol_note || '', fix: fillFix(rule.fix, pkg, branch) };
+      }
+
+      if (rule.mode === 'pending') {
+        // This vendor backports without changing the version number and had no
+        // fixed build when the rule was written. A version at the fixed upstream
+        // release is still proof; anything lower cannot be told from a later backport.
+        var ps = upstreamStatus(pkg.version);
+        if (ps.status === 'fixed') {
+          return { verdict: 'patched', vendor: rule.vendor, fixedIn: ps.fixed, note: rule.note || '' };
+        }
+        return { verdict: 'unknown', vendor: rule.vendor, note: rule.pending_note || '', fix: fillFix(rule.fix, pkg, branch) };
+      }
+
+      // No entry for this branch: upstream 8.2+ carries the fix regardless of vendor
+      // once the version is high enough, so let later rules or the generic judge decide.
+      return null;
+    }
+
+    function judge(pkg) {
+      for (var i = 0; i < RULES.length; i++) {
+        var r = judgeWithRule(RULES[i], pkg);
+        if (r) { r.pkg = pkg; return r; }
+      }
+      var s = upstreamStatus(pkg.version);
+      var out = { pkg: pkg, vendor: '', branch: s.branch };
+      if (s.status === 'fixed') {
+        out.verdict = 'patched';
+        out.note = 'PHP ' + pkg.version + ' carries the upstream fix (first fixed: ' + s.fixed + ').';
+        return out;
+      }
+      if (s.status === 'unknown') {
+        out.verdict = 'unknown';
+        out.note = s.ancient
+          ? 'PHP ' + pkg.version + ' is older than every branch the advisories assessed and has had no security fixes for years. Treat it as compromised-ready and replace it.'
+          : 'Could not read a PHP version from this line.';
+        return out;
+      }
+      if (pkg.type === 'phpv') {
+        out.verdict = 'unknown';
+        out.note = s.status === 'eol'
+          ? 'PHP ' + s.branch + ' got no upstream fix, so this build is vulnerable unless your vendor backported it, and php -v cannot show that. Paste your package list (rpm -qa or dpkg -l) for a definite answer.'
+          : 'Upstream PHP ' + pkg.version + ' is vulnerable (fixed in ' + s.fixed + '), but distributions backport the fix without changing this number. Paste your package list (rpm -qa or dpkg -l) for a definite answer.';
+        return out;
+      }
+      out.verdict = 'unknown';
+      out.note = (s.status === 'eol'
+        ? 'PHP ' + s.branch + ' got no upstream release with the fix.'
+        : 'Upstream ' + pkg.version + ' predates the fix (' + s.fixed + ').') +
+        ' This package comes from a vendor we have no rule for yet, so only its changelog can say whether the fix was backported: rpm -q --changelog ' + pkg.name + ' | grep -E "' + campaignOf(DATA, 'changelog_grep') + '" (or apt changelog ' + pkg.name + ').';
+      out.fix = genericFix(pkg);
+      return out;
+    }
+
+    // Judge the banner NVR with the same GetPageSpeed rpm rules as rpm -qa. The
+    // banner cannot tell the plain php package from a software collection
+    // (php71-php), whose thresholds differ per branch, so judge both shapes and
+    // keep the stricter verdict. Returns null when no GetPageSpeed rule applies.
+    function judgeGpsBanner(banner, phpvPkg) {
+      var u = upstreamOf(banner.version);
+      var nodot = u ? u.branch.replace('.', '') : '';
+      // EL8/EL9 builds exist only as software collections.
+      var shapes = /\.el(8|9)$/.test(banner.release) ? ['php' + nodot + '-php'] : ['php', 'php' + nodot + '-php'];
+      var best = null;
+      var verdicts = {};
+      for (var i = 0; i < shapes.length; i++) {
+        var pkg = { type: 'rpm', name: shapes[i], version: banner.version, release: banner.release, full: banner.version + '-' + banner.release, raw: phpvPkg.raw };
+        var r = judge(pkg);
+        if (!r.vendor) { continue; }
+        verdicts[r.verdict] = true;
+        if (!best || RANK[r.verdict] > RANK[best.verdict]) { best = r; }
+      }
+      if (!best) { return null; }
+      best.pkg = { type: 'phpv', name: 'php', version: banner.version, release: banner.release, full: banner.version + '-' + banner.release, raw: phpvPkg.raw };
+      best.note = (best.note ? best.note + ' ' : '') + 'Judged from the build release in the php -v banner (' + best.pkg.full + ').' +
+        (Object.keys(verdicts).length > 1 ? ' The banner cannot tell the php package from a software collection, so the stricter threshold applies.' : '');
+      return best;
+    }
+
+    function check(text) {
+      var lines = String(text || '').split(/\r?\n/);
+      var gpsBuilt = /Built by GetPageSpeed LLC/i.test(text || '');
+      var banner = gpsBanner(text);
+      var families = {};
+      var order = [];
+      for (var i = 0; i < lines.length; i++) {
+        var pkg = parseLine(lines[i]);
+        if (!pkg || !isRuntime(pkg)) { continue; }
+        var key = familyKey(pkg);
+        if (!families[key]) { families[key] = []; order.push(key); }
+        families[key].push(pkg);
+      }
+      var results = [];
+      for (var k = 0; k < order.length; k++) {
+        var group = families[order[k]];
+        var worst = null;
+        for (var j = 0; j < group.length; j++) {
+          var r = (group[j].type === 'phpv' && banner && judgeGpsBanner(banner, group[j])) || judge(group[j]);
+          if (!worst || RANK[r.verdict] > RANK[worst.verdict]) { worst = r; }
+        }
+        if (worst.pkg.type === 'phpv' && gpsBuilt && !worst.pkg.release) {
+          worst.note += ' This binary was built by GetPageSpeed: run rpm -qa \'php*-common\' to see its release.';
+        }
+        results.push(worst);
+      }
+      var overall = 'none';
+      for (var x = 0; x < results.length; x++) {
+        if (overall === 'none' || RANK[results[x].verdict] > RANK[overall]) { overall = results[x].verdict; }
+      }
+      return { overall: overall, results: results };
+    }
+
+    return { check: check, judge: judge, data: DATA };
   }
 
-  function check(text) {
-    var lines = String(text || '').split(/\r?\n/);
-    var gpsBuilt = /Built by GetPageSpeed LLC/i.test(text || '');
-    var banner = gpsBanner(text);
-    var families = {};
-    var order = [];
-    for (var i = 0; i < lines.length; i++) {
-      var pkg = parseLine(lines[i]);
-      if (!pkg || !isRuntime(pkg)) { continue; }
-      var key = familyKey(pkg);
-      if (!families[key]) { families[key] = []; order.push(key); }
-      families[key].push(pkg);
+  var ENGINE = makeEngine(DATA);
+  var check = ENGINE.check;
+
+  var ALSO = null;
+  var ALSO_DATA = {};
+  (function () {
+    var alsoEl = document.getElementById('gps-p2s-data-also');
+    try { ALSO_DATA = JSON.parse(alsoEl ? alsoEl.textContent : '{}'); } catch (e) { ALSO_DATA = {}; }
+    if (ALSO_DATA && typeof ALSO_DATA === 'object' && Array.isArray(ALSO_DATA.rules) && ALSO_DATA.rules.length) {
+      ALSO = makeEngine(ALSO_DATA);
+    } else {
+      ALSO_DATA = {};
     }
-    var results = [];
-    for (var k = 0; k < order.length; k++) {
-      var group = families[order[k]];
-      var worst = null;
-      for (var j = 0; j < group.length; j++) {
-        var r = (group[j].type === 'phpv' && banner && judgeGpsBanner(banner, group[j])) || judge(group[j]);
-        if (!worst || RANK[r.verdict] > RANK[worst.verdict]) { worst = r; }
-      }
-      if (worst.pkg.type === 'phpv' && gpsBuilt && !worst.pkg.release) {
-        worst.note += ' This binary was built by GetPageSpeed: run rpm -qa \'php*-common\' to see its release.';
-      }
-      results.push(worst);
-    }
-    var overall = 'none';
-    for (var x = 0; x < results.length; x++) {
-      if (overall === 'none' || RANK[results[x].verdict] > RANK[overall]) { overall = results[x].verdict; }
-    }
-    return { overall: overall, results: results };
-  }
+  })();
 
   // ---------- rendering ----------
   function el(tag, cls, text) {
@@ -324,12 +378,57 @@
   var HEADLINES = {
     vulnerable: 'Vulnerable: patch this server now',
     unknown: 'Cannot confirm the fix',
-    patched: 'Patched against PHP2Shell',
+    patched: 'Patched against ' + campaignOf(DATA, 'name'),
     none: 'No PHP packages found'
   };
   var LABELS = { vulnerable: 'Vulnerable', unknown: 'Unconfirmed', patched: 'Patched' };
 
-  function render(report, target) {
+  function findingItem(r) {
+    var li = el('li', 'gps-p2s-finding gps-p2s-finding-' + r.verdict);
+    var head = el('p', 'gps-p2s-finding-head');
+    head.appendChild(el('span', 'gps-p2s-badge gps-p2s-badge-' + r.verdict, LABELS[r.verdict]));
+    head.appendChild(el('code', null, r.pkg.type === 'phpv' ? 'php -v: ' + (r.pkg.full || r.pkg.version) : r.pkg.name + ' ' + (r.pkg.full || r.pkg.version)));
+    li.appendChild(head);
+    var detail = [];
+    if (r.vendor) { detail.push(r.vendor + '.'); }
+    if (r.fixedIn) { detail.push('First fixed build: ' + r.fixedIn + '.'); }
+    if (r.note) { detail.push(r.note); }
+    if (detail.length) { li.appendChild(el('p', 'gps-p2s-finding-note', detail.join(' '))); }
+    if (r.fix && r.verdict !== 'patched') {
+      li.appendChild(el('p', 'gps-p2s-finding-fixlabel', 'Fix'));
+      li.appendChild(el('pre', 'gps-p2s-code', r.fix));
+    }
+    return li;
+  }
+
+  // Second verdict card for the optional "also" data set (another campaign's rules).
+  function alsoCard(also) {
+    var A = ALSO_DATA.campaign || {};
+    var name = A.name || '';
+    var card = el('div', 'gps-p2s-verdict gps-p2s-verdict-' + also.overall + ' gps-p2s-also');
+    card.appendChild(el('p', 'gps-p2s-verdict-title',
+      also.overall === 'vulnerable' ? 'Not patched against ' + name
+        : also.overall === 'unknown' ? name + ': cannot confirm the fix'
+        : 'Also patched against ' + name));
+    if (A.also_note) { card.appendChild(el('p', null, A.also_note)); }
+    if (also.overall !== 'patched') {
+      var list = el('ul', 'gps-p2s-findings');
+      also.results.forEach(function (r) {
+        if (r.verdict !== 'patched') { list.appendChild(findingItem(r)); }
+      });
+      card.appendChild(list);
+    }
+    if (A.url) {
+      var a = el('a', 'gps-p2s-btn gps-p2s-btn-ghost', 'Open the ' + name + ' checker');
+      a.href = A.url;
+      a.setAttribute('data-gps-cta', 'also-' + A.tool);
+      a.addEventListener('click', function () { gpsTrack('cta_click', { cta_target: 'also-' + A.tool }); });
+      card.appendChild(a);
+    }
+    return card;
+  }
+
+  function render(report, target, text) {
     // Verdict class only: what the user pasted never leaves the browser.
     gpsTrack('result_shown', { mode: 'packages', verdict: report.overall });
     target.innerHTML = '';
@@ -341,23 +440,7 @@
       return;
     }
     var list = el('ul', 'gps-p2s-findings');
-    report.results.forEach(function (r) {
-      var li = el('li', 'gps-p2s-finding gps-p2s-finding-' + r.verdict);
-      var head = el('p', 'gps-p2s-finding-head');
-      head.appendChild(el('span', 'gps-p2s-badge gps-p2s-badge-' + r.verdict, LABELS[r.verdict]));
-      head.appendChild(el('code', null, r.pkg.type === 'phpv' ? 'php -v: ' + (r.pkg.full || r.pkg.version) : r.pkg.name + ' ' + (r.pkg.full || r.pkg.version)));
-      li.appendChild(head);
-      var detail = [];
-      if (r.vendor) { detail.push(r.vendor + '.'); }
-      if (r.fixedIn) { detail.push('First fixed build: ' + r.fixedIn + '.'); }
-      if (r.note) { detail.push(r.note); }
-      if (detail.length) { li.appendChild(el('p', 'gps-p2s-finding-note', detail.join(' '))); }
-      if (r.fix && r.verdict !== 'patched') {
-        li.appendChild(el('p', 'gps-p2s-finding-fixlabel', 'Fix'));
-        li.appendChild(el('pre', 'gps-p2s-code', r.fix));
-      }
-      list.appendChild(li);
-    });
+    report.results.forEach(function (r) { list.appendChild(findingItem(r)); });
     card.appendChild(list);
     var after = el('p', 'gps-p2s-verdict-after');
     after.textContent = report.overall === 'patched'
@@ -365,6 +448,13 @@
       : 'After upgrading, restart every PHP process (php-fpm, httpd, lsphp) and run the check again.';
     card.appendChild(after);
     target.appendChild(card);
+    if (ALSO) {
+      var also = ALSO.check(text);
+      if (also.overall !== 'none') {
+        target.appendChild(alsoCard(also));
+        gpsTrack('result_shown', { mode: 'packages-also', verdict: also.overall });
+      }
+    }
     if (window.gpsCopyCode) { window.gpsCopyCode.init(); }
   }
 
@@ -413,6 +503,46 @@
     target.appendChild(card);
   }
 
+  // A failed scan (firewalled host, bad input, rate limit, network error) is
+  // usually someone checking their own server: route them to the package
+  // checker, which needs no inbound access and sees backports a scan cannot.
+  var URL_FAIL_TITLES = {
+    unreachable: 'We could not reach that address',
+    invalid_url: 'That address cannot be scanned',
+    rate_limited: 'Too many scans right now'
+  };
+
+  function renderUrlFailure(code, message, target, guide) {
+    var verdict = URL_FAIL_TITLES[code] ? code : 'request_failed';
+    gpsTrack('result_shown', { mode: 'url', verdict: verdict });
+    var card = el('div', 'gps-p2s-verdict gps-p2s-verdict-unknown gps-p2s-url-fallback');
+    card.appendChild(el('p', 'gps-p2s-verdict-title', URL_FAIL_TITLES[code] || 'Check did not run'));
+    if (message) { card.appendChild(el('p', null, message)); }
+    card.appendChild(el('p', null, 'Check the server itself instead. Run one command on it and paste the output: it works behind a firewall, nothing leaves your browser, and it sees distro backports that a scan cannot.'));
+    var row = el('div', 'gps-p2s-row');
+    var btn = el('button', 'gps-p2s-btn gps-p2s-btn-primary gps-p2s-to-pkg', 'Check my packages instead');
+    btn.type = 'button';
+    btn.addEventListener('click', function () {
+      gpsTrack('cta_click', { cta_target: 'pkg-checker-fallback' });
+      var tab = document.getElementById('gps-p2s-tab-pkg');
+      var input = document.getElementById('gps-p2s-pkg-input');
+      if (tab) { selectTab(tab); }
+      var check = document.getElementById('check');
+      if (check && check.scrollIntoView) { check.scrollIntoView({ block: 'start' }); }
+      if (input) { input.focus(); }
+    });
+    row.appendChild(btn);
+    if (guide) {
+      var a = el('a', 'gps-p2s-btn gps-p2s-btn-ghost', campaignOf(DATA, 'guide_label'));
+      a.href = guide;
+      a.setAttribute('data-gps-cta', 'centos7-guide-fallback');
+      a.addEventListener('click', function () { gpsTrack('cta_click', { cta_target: 'centos7-guide-fallback' }); });
+      row.appendChild(a);
+    }
+    card.appendChild(row);
+    target.appendChild(card);
+  }
+
   function initUi() {
     var form = document.getElementById('gps-p2s-pkg-form');
     var input = document.getElementById('gps-p2s-pkg-input');
@@ -421,7 +551,7 @@
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         gpsTrack('tool_run', { mode: 'packages' });
-        render(check(input.value), out);
+        render(check(input.value), out, input.value);
         out.focus();
       });
     }
@@ -429,7 +559,7 @@
     var sample = document.getElementById('gps-p2s-sample');
     if (sample && input) {
       sample.addEventListener('click', function () {
-        input.value = 'php74-php-common-7.4.33-15.el7.remi.x86_64\nphp74-php-fpm-7.4.33-15.el7.remi.x86_64\nphp74-php-pecl-redis5-5.3.7-1.el7.remi.x86_64';
+        input.value = campaignOf(DATA, 'sample');
         input.focus();
       });
     }
@@ -464,23 +594,16 @@
         btn.disabled = true;
         btn.textContent = 'Checking…';
         urlOut.innerHTML = '';
-        fetch(urlForm.getAttribute('data-endpoint') + '?url=' + encodeURIComponent(urlInput.value.trim()), { headers: { Accept: 'application/json' } })
-          .then(function (res) { return res.json().then(function (body) { return { ok: res.ok, body: body }; }); })
+        window.gpsScanJob.fetch(urlForm.getAttribute('data-endpoint') + (urlForm.getAttribute('data-endpoint').indexOf('?') === -1 ? '?' : '&') + 'url=' + encodeURIComponent(urlInput.value.trim()), { headers: { Accept: 'application/json' } })
           .then(function (r) {
             if (!r.ok) {
-              var card = el('div', 'gps-p2s-verdict gps-p2s-verdict-unknown');
-              card.appendChild(el('p', 'gps-p2s-verdict-title', 'Check did not run'));
-              card.appendChild(el('p', null, (r.body && r.body.message) || 'The check failed. Try again in a minute.'));
-              urlOut.appendChild(card);
+              renderUrlFailure(r.body && r.body.code, r.body && r.body.message, urlOut, urlForm.getAttribute('data-guide'));
               return;
             }
             renderUrl(r.body, urlOut);
           })
           .catch(function () {
-            var card = el('div', 'gps-p2s-verdict gps-p2s-verdict-unknown');
-            card.appendChild(el('p', 'gps-p2s-verdict-title', 'Check did not run'));
-            card.appendChild(el('p', null, 'The request failed. Check your connection and try again.'));
-            urlOut.appendChild(card);
+            renderUrlFailure('request_failed', 'The request failed. Check your connection and try again.', urlOut, urlForm.getAttribute('data-guide'));
           })
           .then(function () {
             btn.disabled = false;
@@ -502,7 +625,7 @@
     });
   }
 
-  window.gpsPhp2Shell = { check: check, vercmp: vercmp, parseLine: parseLine };
+  window.gpsPhp2Shell = { check: check, vercmp: vercmp, parseLine: parseLine, also: ALSO ? { check: ALSO.check } : null };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initUi);
